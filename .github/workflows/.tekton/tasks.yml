@@ -1,0 +1,42 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: cleanup
+spec:
+  description: This task removes existing resources before a fresh deployment
+  workspaces:
+    - name: source
+  steps:
+    - name: remove
+      image: alpine:latest
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/usr/bin/env sh
+        echo "Cleaning up existing files..."
+        rm -rf *
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: nose
+spec:
+  description: This task runs nose unit tests for the Python service
+  workspaces:
+    - name: source
+  params:
+    - name: args
+      type: string
+      default: "-v --with-spec --spec-color"
+  steps:
+    - name: nosetests
+      image: python:3.9-slim
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/usr/bin/env bash
+        set -e
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then
+          pip install -r requirements.txt
+        fi
+        pip install flake8 nose
+        nosetests $(params.args)
